@@ -1,35 +1,53 @@
-from langchain.document_loaders import DocumentLoader
-from langchain.document_transformers import TextSplitter
-from langchain.vector_stores import VectorStore
-from langchain.text_embedding_models import TextEmbeddingModel
-from langchain.retrievers import Retriever
-from langchain.chat_models import ChatModel
-from langchain import hub
+import os
+import sys
 
-loader = DocumentLoader(...)
-documents = loader.load_documents()
+from langchain.chains import ConversationalRetrievalChain
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.document_loaders import UnstructuredPDFLoader
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.llms.ollama import Ollama
+from langchain_community.vectorstores.chroma import Chroma
 
-splitter = TextSplitter(...)
-split_documents = splitter.split(documents)
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+documents = []
+count = 0
+for file in os.listdir("docs"):
+    if count > 10:
+        break
+    if file.endswith(".pdf"):
+        pdf_path = "./docs/" + file
+        loader = UnstructuredPDFLoader(pdf_path, mode="elements")
+        documents.extend(loader.load())
 
-embedding_model = TextEmbeddingModel(...)
-vector_store = VectorStore(...)
+text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=10)
+documents = text_splitter.split_documents(documents)
 
-for doc in split_documents:
-    embedding = embedding_model.embed(doc)
-    vector_store.store(doc.id, embedding)
+embedding_model = OllamaEmbeddings(model="dolphin-phi")
+vector_store = Chroma(documents, embedding_model)
 
-retriever = Retriever(vector_store, embedding_model)
+qa_chain = ConversationalRetrievalChain.from_llm(
+    llm=Ollama(model="dolphin-phi"),
+    retriever=vector_store.as_retriever(search_kwargs={"k": 4}),
+    return_source_documents=True
+)
 
-llm = ChatModel(model_name="gpt-3.5-turbo", temperature=0)
-prompt = hub.pull("rlm/rag-prompt")
+yellow = "\033[0;33m"
+green = "\033[0;32m"
+white = "\033[0;39m"
 
-def rag_chain(question):
-    context = retriever.retrieve(question)
-    prompt_input = {"context": context, "question": question}
-    prompt_output = prompt.invoke(prompt_input).to_string()
-    answer = llm(prompt_output)
-    return answer
-
-print(rag_chain("Your question here"))
+chat_history = []
+print(f"{yellow}---------------------------------------------------------------------------------")
+print('Welcome to the BravoBot. You are now ready to start interacting with your documents')
+print('---------------------------------------------------------------------------------')
+while True:
+    query = input(f"{green}Prompt: ")
+    if query == "exit" or query == "quit" or query == "q" or query == "f":
+        print('Exiting')
+        sys.exit()
+    if query == '':
+        continue
+    result = qa_chain.invoke(
+        {"question": query, "chat_history": chat_history})
+    print(f"{white}Answer: " + result["answer"])
+    chat_history.append((query, result["answer"]))
