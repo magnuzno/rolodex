@@ -23,6 +23,8 @@ except:
             pdf_path = here + '/docs/' + file
             loader = UnstructuredPDFLoader(pdf_path, mode="single")
             documents.extend(loader.load())
+        if file.endswith('.json'):
+            pass
 
     text_splitter = RecursiveCharacterTextSplitter(
         # separator="\n\n",
@@ -42,7 +44,7 @@ except:
 
 llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9)
 
-template = """[INST]<<SYS>>Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
+template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
 History: {history}
 Context: {context}
 Question: {question}
@@ -86,9 +88,9 @@ while True:
 
     ## LLM Chain prototype (no chat, single question)
     context = vector_store.similarity_search(question)
-    # print([doc.page_content for doc in context])
-    response = llm_chain.invoke({'history':chat_history, 'context': context, 'question': question})
-    chat_history.append(f"Human: {question} \n AI:{response['text']})")
+    context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
+    response = llm_chain.invoke({'history':chat_history, 'context': context_str, 'question': question})
+    chat_history.append(f"User: {question} \n Assistant:{response['text']})")
     print(f"{white}Answer: " + response["text"])
 
     ## Conversation chain with custom template
