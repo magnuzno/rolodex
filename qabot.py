@@ -50,7 +50,7 @@ Answer: [/INST]"""
 
 prompt = PromptTemplate(template=template, input_variables=["history", "context", "question"])
 
-llm_chain = LLMChain(prompt=prompt, llm=llm)
+llm_chain = LLMChain(prompt=prompt, llm=llm, verbose=True)
 
 #this is a certain llama format
 # history_template = """"[INST]<<SYS>> You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.<</SYS>> \nHistory: {history} \nQuestion: {question} \nContext: {context} \nAnswer: [/INST]"""
@@ -86,7 +86,7 @@ while True:
 
     ## LLM Chain prototype (no chat, single question)
     context = vector_store.similarity_search(question)
-    print([doc.page_content for doc in context])
+    # print([doc.page_content for doc in context])
     response = llm_chain.invoke({'history':chat_history, 'context': context, 'question': question})
     chat_history.append(f"Human: {question} \n AI:{response['text']})")
     print(f"{white}Answer: " + response["text"])
