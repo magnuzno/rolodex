@@ -47,8 +47,18 @@ prompt = PromptTemplate(template=template, input_variables=["context", "question
 
 llm_chain = LLMChain(prompt=prompt, llm=llm)
 
+history_template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+
+Current conversation:{history}
+Context: {context}
+Human: {question}
+AI: """
+conv_prompt = PromptTemplate(template=history_template, input_variables=["history","context", "question"])
+
+conv_chain = ConversationChain(prompt=prompt, llm=llm)
+
 qa_chain = ConversationalRetrievalChain.from_llm(
-    llm=LlamaCpp(model_path=model_path, temperature=0.95, max_tokens=300, top_p=1, n_gpu_layers=-1),
+    llm=llm,
     retriever=vector_store.as_retriever(search_kwargs={"k": 2}),
     verbose=True)
 
@@ -75,15 +85,20 @@ while True:
     ## LLM Chain prototype (no chat, single question)
     # context = vector_store.similarity_search(question)
     # print([doc.page_content for doc in context])
-    # response = llm_chain.invoke({'context': context, 'question': question})
-
+    # response = llm_chain.invoke({'context': context, 'question': question}
     # print(f"{white}Answer: " + response["text"])
 
-    ## QA Conversation Retrieval Protoype
-    result = qa_chain.invoke(
-        {"question": question, "chat_history": chat_history})
-    print(f"{white}Answer: " + result["answer"])
-    chat_history.append((question, result["answer"]))
+    ## Conversation chain with custom template
+    context = vector_store.similarity_search(question)
+    print([doc.page_content for doc in context])
+    response = conv_chain.invoke({'history': chat_history, 'context': context, 'question': question})
+    chat_history.append((question, response["text"]))
+    print(f"{white}Answer: " + response["text"])
 
-    print(f"{white}Answer: " + result["answer"])
-    chat_history.append((question, result["answer"]))
+    ## QA Conversation Retrieval Protoype
+    # result = qa_chain.invoke(
+    #     {"question": question, "chat_history": chat_history})
+    # print(f"{white}Answer: " + result["answer"])
+    # chat_history.append((question, result["answer"]))
+    # print(f"{white}Answer: " + result["answer"])
+    # chat_history.append((question, result["answer"]))
