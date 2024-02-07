@@ -25,15 +25,15 @@ except:
         if file.endswith('.json'):
             loader = JSONLoader(
                 file_path=file_path,
-                jq_schema='.[].abstract', #extracts only the 'abstract' value
+                jq_schema='.[]', #'.[].abstract' extracts only the 'abstract' value
                 text_content=False)
         if file.endswith('.csv') or file.endswith('.xlsx'):
             loader = UnstructuredExcelLoader(file_path, mode="single")
         documents.extend(loader.load())
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=2000,
-        chunk_overlap=400,
+        chunk_size=3000,
+        chunk_overlap=500,
         length_function=len,
         is_separator_regex=False,
     )
@@ -41,12 +41,12 @@ except:
     for doc in documents:
         doc.page_content = doc.page_content.replace("\n", "")
 
-    model_path = '/home/pvcdata/bravo11bot/mistral/llama2_70b.gguf'
+    model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
     embedding_model = LlamaCppEmbeddings(model_path=model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
     vector_store = FAISS.from_documents(documents, embedding_model)
     vector_store.save_local('faiss_index')
 
-llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9, stop=["[INST]", "User:"])
+llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9, stop=["[INST]", "User:"], f16_kv=True)
 
 template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
 History: {history}
@@ -58,9 +58,6 @@ prompt = PromptTemplate(template=template, input_variables=["history", "context"
 
 llm_chain = LLMChain(prompt=prompt, llm=llm, verbose=True)
 
-# question = "In Unity State, the flooding was expected to put how many people at risk of further displacement?"
-
-#
 
 yellow = "\033[0;33m"
 green = "\033[0;32m"
@@ -78,7 +75,6 @@ while True:
     if question == '':
         continue
 
-    ## LLM Chain prototype (no chat, single question)
     context = vector_store.similarity_search(question, k=10, fetch_k=40)
     context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
     response = llm_chain.invoke({'history':chat_history, 'context': context_str, 'question': question})
