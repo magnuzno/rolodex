@@ -3,7 +3,7 @@ import sys
 
 from langchain.chains import ConversationalRetrievalChain, LLMChain
 from langchain.prompts import PromptTemplate
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import LlamaCppEmbeddings
 from langchain_community.llms.llamacpp import LlamaCpp
@@ -17,18 +17,26 @@ except:
     for file in os.listdir(here + "/docs"):
         if file.endswith(".pdf"):
             pdf_path = here + '/docs/' + file
-            loader = UnstructuredPDFLoader(pdf_path, mode="elements")
+            loader = UnstructuredPDFLoader(pdf_path, mode="single")
             documents.extend(loader.load())
 
-    text_splitter = CharacterTextSplitter(chunk_size=2000, chunk_overlap=10)
+    text_splitter = RecursiveCharacterTextSplitter(
+        # separator="\n\n",
+        chunk_size=1000,
+        chunk_overlap=200,
+        length_function=len,
+        is_separator_regex=False,
+    )
     documents = text_splitter.split_documents(documents)
+    for doc in documents:
+        doc.page_content = doc.page_content.replace("\n", "")
 
-    mistral_path = '/home/pvcdata/bravo11bot/mistral/mistral-7b-v0.1.Q5_K_S.gguf'
-    embedding_model = LlamaCppEmbeddings(model_path=mistral_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
+    model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
+    embedding_model = LlamaCppEmbeddings(model_path=model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
     vector_store = FAISS.from_documents(documents, embedding_model)
     vector_store.save_local('faiss_index')
 
-llm = LlamaCpp(model_path=mistral_path, temperature=0.95, max_tokens=1000, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False)
+llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9)
 
 # qa_chain = ConversationalRetrievalChain.from_llm(
 #     llm=llm,
@@ -36,10 +44,10 @@ llm = LlamaCpp(model_path=mistral_path, temperature=0.95, max_tokens=1000, n_ctx
 #     max_tokens_limit = 5000,
 #     verbose = True)
 
-template = """Use this context to the question: {context}
+template = """ Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.
+Context: {context}
 Question: {question}
-Let's take a deep breath and work this out step by step. Answer succinctly.
-Answer:"""
+Answer: """
 
 prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
@@ -49,6 +57,7 @@ llm_chain = LLMChain(prompt=prompt, llm=llm)
 # print(f"context: {context}")
 # response = llm_chain.invoke({'context': context, 'question': question})
 # print(response)
+# https://huggingface.co/jartine/llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q8_0.gguf?download=true
 
 yellow = "\033[0;33m"
 green = "\033[0;32m"
