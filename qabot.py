@@ -13,6 +13,11 @@ from langchain_community.embeddings import LlamaCppEmbeddings
 from langchain_community.llms.llamacpp import LlamaCpp
 from langchain_community.vectorstores.faiss import FAISS
 
+## arguments
+document_size = 3000
+doc_chunk_overlap = 500
+model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
+
 try:
     vector_store = FAISS.load_local('faiss_index')
 except:
@@ -32,8 +37,8 @@ except:
         documents.extend(loader.load())
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=3000,
-        chunk_overlap=500,
+        chunk_size=document_size,
+        chunk_overlap=doc_chunk_overlap,
         length_function=len,
         is_separator_regex=False,
     )
@@ -41,10 +46,12 @@ except:
     for doc in documents:
         doc.page_content = doc.page_content.replace("\n", "")
 
-    model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
     embedding_model = LlamaCppEmbeddings(model_path=model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
     vector_store = FAISS.from_documents(documents, embedding_model)
     vector_store.save_local('faiss_index')
+
+    ## keyword search
+
 
 llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9, stop=["[INST]", "User:"], f16_kv=True)
 
