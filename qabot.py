@@ -2,7 +2,11 @@ import os
 import sys
 
 from langchain.chains import ConversationalRetrievalChain, ConversationChain, LLMChain
-from langchain.prompts import PromptTemplate
+from langchain.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    PromptTemplate,
+)
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import LlamaCppEmbeddings
@@ -38,24 +42,22 @@ except:
 
 llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9)
 
-template = """ Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.
+template = """[INST]<<SYS>>Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
+History: {history}
 Context: {context}
 Question: {question}
-Answer: """
+Answer: [/INST]"""
 
-prompt = PromptTemplate(template=template, input_variables=["context", "question"])
+prompt = PromptTemplate(template=template, input_variables=["history", "context", "question"])
 
 llm_chain = LLMChain(prompt=prompt, llm=llm)
 
-history_template = """The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+#this is a certain llama format
+# history_template = """"[INST]<<SYS>> You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.<</SYS>> \nHistory: {history} \nQuestion: {question} \nContext: {context} \nAnswer: [/INST]"""
+# conv_prompt = PromptTemplate(template=history_template, input_variables=["history","question", "context"]) #, "question"
 
-Current conversation:{history}
-Context: {context}
-Human: {question}
-AI: """
-conv_prompt = PromptTemplate(template=history_template, input_variables=["history","context", "question"])
-
-conv_chain = ConversationChain(prompt=prompt, llm=llm)
+# conv_prompt= ChatPromptTemplate(input_variables=['question', 'context'], output_parser=None, partial_variables={}, messages=[HumanMessagePromptTemplate(prompt=PromptTemplate(input_variables=['question', 'context'], output_parser=None, partial_variables={}, template="[INST]<<SYS>> You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.<</SYS>> \nHistory: {history} \nQuestion: {question} \nContext: {context} \nAnswer: [/INST]", template_format='f-string', validate_template=True), additional_kwargs={})])
+# conv_chain = ConversationChain(prompt=conv_prompt, llm=llm)
 
 qa_chain = ConversationalRetrievalChain.from_llm(
     llm=llm,
@@ -83,17 +85,18 @@ while True:
         continue
 
     ## LLM Chain prototype (no chat, single question)
-    # context = vector_store.similarity_search(question)
-    # print([doc.page_content for doc in context])
-    # response = llm_chain.invoke({'context': context, 'question': question}
-    # print(f"{white}Answer: " + response["text"])
-
-    ## Conversation chain with custom template
     context = vector_store.similarity_search(question)
     print([doc.page_content for doc in context])
-    response = conv_chain.invoke({'history': chat_history, 'context': context, 'question': question})
-    chat_history.append((question, response["text"]))
+    response = llm_chain.invoke({'history':chat_history, 'context': context, 'question': question})
+    chat_history.append(f"Human: {question} \n AI:{response['text']})")
     print(f"{white}Answer: " + response["text"])
+
+    ## Conversation chain with custom template
+    # context = vector_store.similarity_search(question)
+    # print([doc.page_content for doc in context])
+    # response = conv_chain.invoke({'context': context, 'question': question})
+    # # chat_history.append(f"Human: {question} \n AI:{response['text']})")
+    # print(f"{white}Answer: " + response["text"])
 
     ## QA Conversation Retrieval Protoype
     # result = qa_chain.invoke(
