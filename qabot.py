@@ -28,7 +28,7 @@ except:
     vector_store = FAISS.from_documents(documents, embedding_model)
     vector_store.save_local('faiss_index')
 
-llm = LlamaCpp(model_path=mistral_path, temperature=0.95, max_tokens=8000, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False)
+llm = LlamaCpp(model_path=mistral_path, temperature=0.95, max_tokens=1000, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False)
 
 # qa_chain = ConversationalRetrievalChain.from_llm(
 #     llm=llm,
@@ -36,37 +36,41 @@ llm = LlamaCpp(model_path=mistral_path, temperature=0.95, max_tokens=8000, n_ctx
 #     max_tokens_limit = 5000,
 #     verbose = True)
 
-template = """Relevant context to the question: {context}
+template = """Use this context to the question: {context}
 Question: {question}
-Answer: Let's take a deep breath and work this out step by step."""
+Let's take a deep breath and work this out step by step. Answer succinctly.
+Answer:"""
 
 prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
 llm_chain = LLMChain(prompt=prompt, llm=llm)
-question = "In Unity State, the flooding was expected to put how many people at risk of further displacement?"
-context = vector_store.similarity_search(question)
-print(f"context: {context}")
-response = llm_chain.invoke({'contex': context, 'question': question})
-print(response)
+# question = "In Unity State, the flooding was expected to put how many people at risk of further displacement?"
+# context = vector_store.similarity_search(question)
+# print(f"context: {context}")
+# response = llm_chain.invoke({'context': context, 'question': question})
+# print(response)
 
-# yellow = "\033[0;33m"
-# green = "\033[0;32m"
-# white = "\033[0;39m"
+yellow = "\033[0;33m"
+green = "\033[0;32m"
+white = "\033[0;39m"
 
-# chat_history = []
-# print(f"{yellow}---------------------------------------------------------------------------------")
-# print('Welcome to the BravoBot. You are now ready to start interacting with your documents')
-# print('---------------------------------------------------------------------------------')
-# while True:
-#     query = input(f"{green}Prompt: ")
-#     if query == "exit" or query == "quit" or query == "q" or query == "f":
-#         print('Exiting')
-#         sys.exit()
-#     if query == '':
-#         continue
+chat_history = []
+print(f"{yellow}---------------------------------------------------------------------------------")
+print('Welcome to the BravoBot. You are now ready to start interacting with your documents')
+print('---------------------------------------------------------------------------------')
+while True:
+    question = input(f"{green}Prompt: ")
+    if question == "exit" or question == "quit" or question == "q" or question == "f":
+        print('Exiting')
+        sys.exit()
+    if question == '':
+        continue
 
-#     result = qa_chain.invoke(
-#         {"question": query, "chat_history": chat_history})
+    context = vector_store.similarity_search(question)
+    print([doc.page_content for doc in context])
+    response = llm_chain.invoke({'context': context, 'question': question})
 
-#     print(f"{white}Answer: " + result["answer"])
-#     chat_history.append((query, result["answer"]))
+    print(f"{white}Answer: " + response["text"])
+
+    # print(f"{white}Answer: " + result["answer"])
+    # chat_history.append((query, result["answer"]))
