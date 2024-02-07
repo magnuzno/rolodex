@@ -1,7 +1,7 @@
 import os
 import sys
 
-from langchain.chains import ConversationalRetrievalChain, LLMChain
+from langchain.chains import ConversationalRetrievalChain, ConversationChain, LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredPDFLoader
@@ -38,12 +38,6 @@ except:
 
 llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9)
 
-# qa_chain = ConversationalRetrievalChain.from_llm(
-#     llm=llm,
-#     retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
-#     max_tokens_limit = 5000,
-#     verbose = True)
-
 template = """ Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.
 Context: {context}
 Question: {question}
@@ -52,11 +46,14 @@ Answer: """
 prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
 llm_chain = LLMChain(prompt=prompt, llm=llm)
+
+qa_chain = ConversationalRetrievalChain.from_llm(
+    llm=LlamaCpp(model_path=model_path, temperature=0.95, max_tokens=300, top_p=1, n_gpu_layers=-1),
+    retriever=vector_store.as_retriever(search_kwargs={"k": 2}),
+    verbose=True)
+
 # question = "In Unity State, the flooding was expected to put how many people at risk of further displacement?"
-# context = vector_store.similarity_search(question)
-# print(f"context: {context}")
-# response = llm_chain.invoke({'context': context, 'question': question})
-# print(response)
+
 # https://huggingface.co/jartine/llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q8_0.gguf?download=true
 
 yellow = "\033[0;33m"
@@ -75,11 +72,18 @@ while True:
     if question == '':
         continue
 
-    context = vector_store.similarity_search(question)
-    print([doc.page_content for doc in context])
-    response = llm_chain.invoke({'context': context, 'question': question})
+    ## LLM Chain prototype (no chat, single question)
+    # context = vector_store.similarity_search(question)
+    # print([doc.page_content for doc in context])
+    # response = llm_chain.invoke({'context': context, 'question': question})
 
-    print(f"{white}Answer: " + response["text"])
+    # print(f"{white}Answer: " + response["text"])
 
-    # print(f"{white}Answer: " + result["answer"])
-    # chat_history.append((query, result["answer"]))
+    ## QA Conversation Retrieval Protoype
+    result = qa_chain.invoke(
+        {"question": question, "chat_history": chat_history})
+    print(f"{white}Answer: " + result["answer"])
+    chat_history.append((question, result["answer"]))
+
+    print(f"{white}Answer: " + result["answer"])
+    chat_history.append((question, result["answer"]))
