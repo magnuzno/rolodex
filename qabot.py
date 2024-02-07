@@ -4,31 +4,39 @@ import sys
 from langchain.chains import ConversationalRetrievalChain
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredPDFLoader
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain_community.llms.ollama import Ollama
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_community.embeddings import LlamaCppEmbeddings
 
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+# from langchain_community.llms.ollama import Ollama
+from langchain_community.llms.llamacpp import LlamaCpp
+from langchain_community.vectorstores.faiss import FAISS
+
+# os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+# os.environ["LANGCHAIN_HANDLER"] = ""
+
+here = os.path.dirname(os.path.abspath(__file__))
 
 documents = []
 count = 0
-for file in os.listdir("docs"):
+for file in os.listdir(here + "/docs"):
     if count > 10:
         break
     if file.endswith(".pdf"):
-        pdf_path = "./docs/" + file
+        pdf_path = here + '/docs/' + file
         loader = UnstructuredPDFLoader(pdf_path, mode="elements")
         documents.extend(loader.load())
 
-text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=10)
+text_splitter = CharacterTextSplitter(chunk_size=3000, chunk_overlap=10)
 documents = text_splitter.split_documents(documents)
 
-embedding_model = OllamaEmbeddings(model="dolphin-phi")
-vector_store = Chroma(documents, embedding_model)
+mistral_path = '/home/pvcdata/bravo11bot/mistral/mistral-7b-v0.1.Q5_K_S.gguf'
+# embedding_model = OllamaEmbeddings(model="dolphin-phi")
+embedding_model = LlamaCppEmbeddings(model_path=mistral_path, n_ctx=8000, n_batch=10)
+vector_store = FAISS.from_documents(documents, embedding_model)
+
 
 qa_chain = ConversationalRetrievalChain.from_llm(
-    llm=Ollama(model="dolphin-phi"),
-    retriever=vector_store.as_retriever(search_kwargs={"k": 4}),
+    llm=LlamaCpp(model_path=mistral_path, temperature=0.75, max_tokens=2000, top_p=1),
+    retriever=vector_store.as_retriever(search_kwargs={"k": 5}),
     return_source_documents=True
 )
 
