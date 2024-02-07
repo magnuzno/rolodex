@@ -5,40 +5,34 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import LlamaCppEmbeddings
-
-# from langchain_community.llms.ollama import Ollama
 from langchain_community.llms.llamacpp import LlamaCpp
 from langchain_community.vectorstores.faiss import FAISS
-
-# os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-# os.environ["LANGCHAIN_HANDLER"] = ""
 
 here = os.path.dirname(os.path.abspath(__file__))
 
 documents = []
-count = 0
 for file in os.listdir(here + "/docs"):
-    if count > 10:
-        break
     if file.endswith(".pdf"):
         pdf_path = here + '/docs/' + file
         loader = UnstructuredPDFLoader(pdf_path, mode="elements")
         documents.extend(loader.load())
 
-text_splitter = CharacterTextSplitter(chunk_size=3000, chunk_overlap=10)
+text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=10)
 documents = text_splitter.split_documents(documents)
 
 mistral_path = '/home/pvcdata/bravo11bot/mistral/mistral-7b-v0.1.Q5_K_S.gguf'
-# embedding_model = OllamaEmbeddings(model="dolphin-phi")
-embedding_model = LlamaCppEmbeddings(model_path=mistral_path, n_ctx=8000, n_batch=10)
-vector_store = FAISS.from_documents(documents, embedding_model)
+embedding_model = LlamaCppEmbeddings(model_path=mistral_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=1000)
 
+try:
+    vector_store = FAISS.load_local('faiss_index')
+except:
+    vector_store = FAISS.from_documents(documents, embedding_model)
+    vector_store.save_local('faiss_index')
 
 qa_chain = ConversationalRetrievalChain.from_llm(
-    llm=LlamaCpp(model_path=mistral_path, temperature=0.75, max_tokens=2000, top_p=1),
-    retriever=vector_store.as_retriever(search_kwargs={"k": 5}),
-    return_source_documents=True
-)
+    llm=LlamaCpp(model_path=mistral_path, temperature=0.95, max_tokens=7000, top_p=1, n_gpu_layers=1000),
+    retriever=vector_store.as_retriever(search_kwargs={"k": 2}),
+    verbose=True)
 
 yellow = "\033[0;33m"
 green = "\033[0;32m"

@@ -1,2 +1,5 @@
 https://python.langchain.com/docs/expression_language/cookbook/retrieval
 https://diptimanrc.medium.com/rapid-q-a-on-multiple-pdfs-using-langchain-and-chromadb-as-local-disk-vector-store-60678328c0df
+
+model:
+wget https://huggingface.co/TheBloke/Mistral-7B-v0.1-GGUF/blob/main/mistral-7b-v0.1.Q5_0.gguf
