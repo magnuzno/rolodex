@@ -5,14 +5,26 @@ import streamlit as st
 
 from bravobot import ChatBot, DocumentLoader, VectorStoreManager
 
-model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
+model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_Q8_chat.gguf'
+faiss_path = '/home/pvcdata/bravo11bot/faiss_index'
 
-st.title("Document-based Q&A System")
+st.title("Bravo11Bot - RAG for Acquisitions")
+
+# Define your options
+# options = ["Local Llama2", "GPT4"]
+
+# # Create the dropdown menu
+# model_option = st.selectbox("Choose an option", options)
+
+# # Display the selected option
+# st.write(f"You selected {model_option}")
+# openai_key = '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'
+openai_key = None
 
 try:
-    vector_store = VectorStoreManager(model_path = model_path, faiss_index_path='/home/pvcdata/bravo11bot/faiss_index').create_vector_store()
+    vector_store = VectorStoreManager(model_path = model_path, faiss_index_path=faiss_path, openai_key=openai_key).create_vector_store()
     st.success("Vector store found and loaded from disk (faiss_index)")
-except FileNotFoundError:
+except TypeError: # documents is None, not iterable
     # Streamlit interface to allow users to upload PDF files
     uploaded_files = st.file_uploader("Upload PDF, Excel, or JSON documents", accept_multiple_files=True)
 
@@ -31,11 +43,11 @@ except FileNotFoundError:
         document_loader = DocumentLoader(pdf_path)
         documents.extend(document_loader.load_documents())
     if documents:
-        vector_store_manager = VectorStoreManager(documents, model_path)
+        vector_store_manager = VectorStoreManager(documents, model_path, faiss_path)
         vector_store = vector_store_manager.create_vector_store()
         st.success("Documents processed and vector store created/loaded.")
 
-chat_bot = ChatBot(vector_store, model_path)
+chat_bot = ChatBot(vector_store, model_path, openai_key=openai_key)
 
 ## Chat interface with streamlit
 if 'messages' not in st.session_state:
