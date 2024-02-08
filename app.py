@@ -7,7 +7,6 @@ from bravobot import ChatBot, DocumentLoader, VectorStoreManager
 
 model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
 
-# Initialize Streamlit app
 st.title("Document-based Q&A System")
 
 try:
@@ -38,6 +37,7 @@ except FileNotFoundError:
 
 chat_bot = ChatBot(vector_store, model_path)
 
+## Chat interface with streamlit
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
@@ -51,7 +51,7 @@ if prompt := st.chat_input("Type your question here"):
 
 if prompt:
     response, context = chat_bot.chat(prompt)
-    
+
     # TODO add side window with context
 
     with st.chat_message("assistant"):
