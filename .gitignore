@@ -3,3 +3,4 @@
 *.gguf
 /faiss_index/
 *cpython*
+keys.json

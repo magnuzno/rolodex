@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 from langchain.chains import LLMChain
@@ -58,7 +59,7 @@ class VectorStoreManager:
             )
             self.documents = text_splitter.split_documents(self.documents)
             for doc in self.documents:
-                doc.page_content = doc.page_content.replace("\n", "")
+                doc.page_content = re.sub(r'(\\[tnr]|[\x00-\x1F\x7F-\x9F]|[\u0080-\uFFFF])', '', doc.page_content)
 
             vector_store = FAISS.from_documents(self.documents, embedding_model)
             vector_store.save_local(self.faiss_index_path)
@@ -87,6 +88,7 @@ class ChatBot:
         context = self.vector_store.similarity_search(question, k=10, fetch_k=40)
         # TODO add document title in context_str
         context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
+        context_str = ''
         response = self.llm_chain.invoke({'history':self.chat_history, 'context': context_str, 'question': question})
         self.chat_history.append(f"User: {question} \n Assistant:{response['text']})")
         return response["text"], context_str

@@ -1,4 +1,5 @@
 
+import json
 import os
 import tempfile
 
@@ -19,14 +20,13 @@ st.title("Bravo11Bot - RAG for Acquisitions")
 
 # # Display the selected option
 # st.write(f"You selected {model_option}")
-import json
+
 
 # Load keys from keys.json
-with open('keys.json') as f:
-    keys = json.load(f)
-
-openai_key = keys['openai_key']
-# openai_key = None
+# with open('keys.json') as f:
+#     keys = json.load(f)
+# openai_key = keys['openai_key']
+openai_key = None
 
 try:
     vector_store = VectorStoreManager(model_path = model_path, faiss_index_path=faiss_path, openai_key=openai_key).create_vector_store()
