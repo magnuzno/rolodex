@@ -43,11 +43,11 @@ if uploaded_files:
             vector_store = FAISS.from_documents(documents, embedding_model)
             vector_store.save_local('faiss_index')
         st.success("Documents processed and vector store created/loaded.")
-        
-        
-        
-        
-        
+
+
+
+
+
         # Setup LLM and prompt template
         llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9)
         template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
