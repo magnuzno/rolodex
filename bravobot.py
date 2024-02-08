@@ -73,12 +73,12 @@ class ChatBot:
         if openai_key is not None:
             pass
         else:
-            self.llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9, stop=["[INST]", "User:"], f16_kv=True, streaming=False)
+            self.llm = LlamaCpp(model_path=model_path, temperature=0, max_tokens=300, n_ctx=7000, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=2, stop=["[INST]", "User:"], f16_kv=True, streaming=False)
         template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
         History: {history}
         Context: {context}
         Question: {question}
-        Answer: [/INST]"""
+        Assistant:[/INST]"""
         prompt = PromptTemplate(template=template, input_variables=["history", "context", "question"])
         self.llm_chain = LLMChain(prompt=prompt, llm=self.llm, verbose=True)
         self.chat_history = []
