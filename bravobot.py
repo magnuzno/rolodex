@@ -42,6 +42,7 @@ class VectorStoreManager:
         self.faiss_index_path = faiss_index_path
 
     def create_vector_store(self):
+        embedding_model = LlamaCppEmbeddings(model_path=self.model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
         if self.faiss_index_path is None:
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.document_size,
@@ -53,11 +54,10 @@ class VectorStoreManager:
             for doc in self.documents:
                 doc.page_content = doc.page_content.replace("\n", "")
 
-            embedding_model = LlamaCppEmbeddings(model_path=self.model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
             vector_store = FAISS.from_documents(self.documents, embedding_model)
             vector_store.save_local('faiss_index')
         else:
-            vector_store = FAISS.load_local(self.faiss_index_path)
+            vector_store = FAISS.load_local(self.faiss_index_path,embedding_model)
         return vector_store
 
 class ChatBot:
@@ -76,6 +76,7 @@ class ChatBot:
 
     def chat(self, question):
         context = self.vector_store.similarity_search(question, k=10, fetch_k=40)
+        # TODO add document title in context_str
         context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
         response = self.llm_chain.invoke({'history':self.chat_history, 'context': context_str, 'question': question})
         self.chat_history.append(f"User: {question} \n Assistant:{response['text']})")

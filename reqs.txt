@@ -29,6 +29,7 @@ dataclasses-json==0.6.4
 dataclasses-json-speakeasy==0.5.11
 Deprecated==1.2.14
 diskcache==5.6.3
+distro==1.9.0
 effdet==0.4.1
 emoji==2.10.1
 et-xmlfile==1.1.0
@@ -49,7 +50,9 @@ graphlib-backport==1.0.3
 greenlet==3.0.3
 grpcio==1.60.1
 h11==0.14.0
+httpcore==1.0.2
 httptools==0.6.1
+httpx==0.26.0
 huggingface-hub==0.20.3
 humanfriendly==10.0
 idna==3.6
@@ -69,6 +72,7 @@ kubernetes==29.0.0
 langchain==0.1.5
 langchain-community==0.0.18
 langchain-core==0.1.19
+langchain-openai==0.0.5
 langdetect==1.0.9
 langsmith==0.0.86
 layoutparser==0.3.4
@@ -106,6 +110,7 @@ olefile==0.47
 omegaconf==2.3.0
 onnx==1.15.0
 onnxruntime==1.15.1
+openai==1.11.1
 opencv-python==4.9.0.80
 openpyxl==3.1.2
 opentelemetry-api==1.22.0
@@ -176,6 +181,7 @@ streamlit==1.31.0
 sympy==1.12
 tabulate==0.9.0
 tenacity==8.2.3
+tiktoken==0.5.2
 timm==0.9.12
 tokenizers==0.15.1
 toml==0.10.2
