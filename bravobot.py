@@ -34,15 +34,15 @@ class DocumentLoader:
         return self.documents
 
 class VectorStoreManager:
-    def __init__(self, documents=None, model_path=None,  faiss_index = None, document_size=3000, doc_chunk_overlap=500):
+    def __init__(self, documents=None, model_path=None,  faiss_index_path = None, document_size=3000, doc_chunk_overlap=500):
         self.documents = documents
         self.model_path = model_path
         self.document_size = document_size
         self.doc_chunk_overlap = doc_chunk_overlap
-        self.faiss_index = faiss_index
+        self.faiss_index_path = faiss_index_path
 
     def create_vector_store(self):
-        if self.faiss_index is None:
+        if self.faiss_index_path is None:
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.document_size,
                 chunk_overlap=self.doc_chunk_overlap,
@@ -57,11 +57,11 @@ class VectorStoreManager:
             vector_store = FAISS.from_documents(self.documents, embedding_model)
             vector_store.save_local('faiss_index')
         else:
-            vector_store = FAISS.load_local('faiss_index')
+            vector_store = FAISS.load_local(self.faiss_index_path)
         return vector_store
 
 class ChatBot:
-    def __init__(self, vector_store, model_path):
+    def __init__(self, vector_store: FAISS, model_path: str):
         self.vector_store = vector_store
         self.model_path = model_path
         self.llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9, stop=["[INST]", "User:"], f16_kv=True)
