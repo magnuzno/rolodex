@@ -19,7 +19,7 @@ doc_chunk_overlap = 500
 model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'
 
 try:
-    vector_store = FAISS.load_local('faiss_index')
+    vector_store = c
 except:
     here = os.path.dirname(os.path.abspath(__file__))
     documents = []

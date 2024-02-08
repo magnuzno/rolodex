@@ -15,46 +15,49 @@ from langchain_community.vectorstores.faiss import FAISS
 
 
 class DocumentLoader:
-    def __init__(self, directory):
-        self.directory = directory
+    def __init__(self, path):
+        self.path = path
         self.documents = []
 
     def load_documents(self):
-        for file in os.listdir(self.directory):
-            file_path = self.directory + '/' + file
-            if file.endswith(".pdf"):
-                loader = UnstructuredPDFLoader(file_path, mode="single")
-            elif file.endswith('.json'):
-                loader = JSONLoader(
-                    file_path=file_path,
-                    jq_schema='.[]',
-                    text_content=False)
-            elif file.endswith('.csv') or file.endswith('.xlsx'):
-                loader = UnstructuredExcelLoader(file_path, mode="single")
-            self.documents.extend(loader.load())
+        # file_path = self.directory + '/' + file
+        if self.path.endswith(".pdf"):
+            loader = UnstructuredPDFLoader(self.path, mode="single")
+        elif self.path.endswith('.json'):
+            loader = JSONLoader(
+                file_path=self.path,
+                jq_schema='.[]',
+                text_content=False)
+        elif self.path.endswith('.csv') or self.path.endswith('.xlsx'):
+            loader = UnstructuredExcelLoader(self.path, mode="single")
+        self.documents.extend(loader.load())
         return self.documents
 
 class VectorStoreManager:
-    def __init__(self, documents, model_path, document_size=3000, doc_chunk_overlap=500):
+    def __init__(self, documents=None, model_path=None,  faiss_index = None, document_size=3000, doc_chunk_overlap=500):
         self.documents = documents
         self.model_path = model_path
         self.document_size = document_size
         self.doc_chunk_overlap = doc_chunk_overlap
+        self.faiss_index = faiss_index
 
     def create_vector_store(self):
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.document_size,
-            chunk_overlap=self.doc_chunk_overlap,
-            length_function=len,
-            is_separator_regex=False,
-        )
-        self.documents = text_splitter.split_documents(self.documents)
-        for doc in self.documents:
-            doc.page_content = doc.page_content.replace("\n", "")
+        if self.faiss_index is None:
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=self.document_size,
+                chunk_overlap=self.doc_chunk_overlap,
+                length_function=len,
+                is_separator_regex=False,
+            )
+            self.documents = text_splitter.split_documents(self.documents)
+            for doc in self.documents:
+                doc.page_content = doc.page_content.replace("\n", "")
 
-        embedding_model = LlamaCppEmbeddings(model_path=self.model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
-        vector_store = FAISS.from_documents(self.documents, embedding_model)
-        vector_store.save_local('faiss_index')
+            embedding_model = LlamaCppEmbeddings(model_path=self.model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
+            vector_store = FAISS.from_documents(self.documents, embedding_model)
+            vector_store.save_local('faiss_index')
+        else:
+            vector_store = FAISS.load_local('faiss_index')
         return vector_store
 
 class ChatBot:
@@ -71,17 +74,9 @@ class ChatBot:
         self.llm_chain = LLMChain(prompt=prompt, llm=self.llm, verbose=True)
         self.chat_history = []
 
-    def chat(self):
-        while True:
-            question = input("Prompt: ")
-            if question in ["exit", "quit", "q", "f"]:
-                print('Exiting')
-                sys.exit()
-            if question == '':
-                continue
-
-            context = self.vector_store.similarity_search(question, k=10, fetch_k=40)
-            context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
-            response = self.llm_chain.invoke({'history':self.chat_history, 'context': context_str, 'question': question})
-            self.chat_history.append(f"User: {question} \n Assistant:{response['text']})")
-            print("Answer: " + response["text"])
+    def chat(self, question):
+        context = self.vector_store.similarity_search(question, k=10, fetch_k=40)
+        context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
+        response = self.llm_chain.invoke({'history':self.chat_history, 'context': context_str, 'question': question})
+        self.chat_history.append(f"User: {question} \n Assistant:{response['text']})")
+        return response["text"], context_str
