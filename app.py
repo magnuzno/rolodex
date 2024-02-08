@@ -1,6 +1,7 @@
-import streamlit as st
 import os
 import tempfile
+
+import streamlit as st
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -8,10 +9,12 @@ from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.embeddings import LlamaCppEmbeddings
 from langchain_community.llms.llamacpp import LlamaCpp
 from langchain_community.vectorstores.faiss import FAISS
+
 # Initialize Streamlit app
 st.title("Document-based Q&A System")
 # Streamlit interface to allow users to upload PDF files
 uploaded_files = st.file_uploader("Upload PDF documents", accept_multiple_files=True, type=['pdf'])
+# uploaded_files = os.listdir('/home/pvcdata/bravo11bot/docs')
 # Temporary directory for uploaded files
 temp_dir = tempfile.mkdtemp()
 # Placeholder for documents and vector store
@@ -35,11 +38,16 @@ if uploaded_files:
         try:
             vector_store = FAISS.load_local('faiss_index')
         except:
-            model_path = '/Users/goycojc1/Downloads/mistral-7b-instruct-v0.1.Q5_K_S.gguf'  # Update this path
-            embedding_model = LlamaCpp(model_path=model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
+            model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_chat.gguf'  # Update this path
+            embedding_model = LlamaCppEmbeddings(model_path=model_path, n_ctx=7000, n_batch=100, verbose=False, n_gpu_layers=-1)
             vector_store = FAISS.from_documents(documents, embedding_model)
             vector_store.save_local('faiss_index')
         st.success("Documents processed and vector store created/loaded.")
+        
+        
+        
+        
+        
         # Setup LLM and prompt template
         llm = LlamaCpp(model_path=model_path, temperature=0.9, max_tokens=300, n_ctx=7000, top_p=1, n_gpu_layers=-1, n_batch=100, verbose=False, repeat_penalty=1.9)
         template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
