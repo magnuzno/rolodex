@@ -74,12 +74,20 @@ class ChatBot:
         if openai_key is not None:
             pass
         else:
-            self.llm = LlamaCpp(model_path=model_path, temperature=0.01, max_tokens=300, n_ctx=7000, n_gpu_layers=-1, verbose=False, repeat_penalty=4, stop=["[INST]", "User:"], f16_kv=True, streaming=False)
-        template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
+            self.llm = LlamaCpp(model_path=model_path, temperature=0.01, max_tokens=300, n_ctx=7000, n_gpu_layers=-1, verbose=False, repeat_penalty=1.3, stop=["[INST]", "User:"], f16_kv=True, streaming=False, last_n_tokens_size=300)
+        # llama format
+        # template = """[INST]<<SYS>>You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
+        # History: {history}
+        # Context: {context}
+        # Question: {question}
+        # Assistant:[/INST]"""
+
+        # vicunna format
+        template = """You are a helpful assistant. Answer the question with the context provided. Use only information from the context and answer succintly in short sentences.<</SYS>>
         History: {history}
         Context: {context}
         Question: {question}
-        Assistant:[/INST]"""
+        Assistant:"""
         prompt = PromptTemplate(template=template, input_variables=["history", "context", "question"])
         self.llm_chain = LLMChain(prompt=prompt, llm=self.llm, verbose=True)
         self.chat_history = []
@@ -88,7 +96,8 @@ class ChatBot:
         context = self.vector_store.similarity_search(question, k=10, fetch_k=40)
         # TODO add document title in context_str
         context_str = [f"{i}: " + doc.page_content for i, doc in enumerate(context)]
-        context_str = ''
+        # print(f"chat history: {self.chat_history}")
+        # print(f"context_str: {context_str}")
         response = self.llm_chain.invoke({'history':self.chat_history, 'context': context_str, 'question': question})
         self.chat_history.append(f"User: {question} \n Assistant:{response['text']})")
         return response["text"], context_str

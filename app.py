@@ -7,7 +7,8 @@ import streamlit as st
 
 from bravobot import ChatBot, DocumentLoader, VectorStoreManager
 
-model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_Q8_chat.gguf'
+model_path = '/home/pvcdata/bravo11bot/mistral/mistral7b_chat.gguf'
+embedding_model_path = '/home/pvcdata/bravo11bot/mistral/llama2_13b_Q8.gguf' # TODO use a proper embedding model
 faiss_path = '/home/pvcdata/bravo11bot/faiss_index'
 
 st.title("Bravo11Bot - RAG for Acquisitions")
@@ -29,7 +30,7 @@ st.title("Bravo11Bot - RAG for Acquisitions")
 openai_key = None
 
 try:
-    vector_store = VectorStoreManager(model_path = model_path, faiss_index_path=faiss_path, openai_key=openai_key).create_vector_store()
+    vector_store = VectorStoreManager(model_path = embedding_model_path, faiss_index_path=faiss_path, openai_key=openai_key).create_vector_store()
     st.success("Vector store found and loaded from disk (faiss_index)")
 except TypeError: # documents is None, not iterable
     # Streamlit interface to allow users to upload PDF files
@@ -50,13 +51,15 @@ except TypeError: # documents is None, not iterable
         document_loader = DocumentLoader(pdf_path)
         documents.extend(document_loader.load_documents())
     if documents:
-        vector_store_manager = VectorStoreManager(documents, model_path, faiss_path)
+        vector_store_manager = VectorStoreManager(documents, embedding_model_path, faiss_path)
         vector_store = vector_store_manager.create_vector_store()
         st.success("Documents processed and vector store created/loaded.")
 
-chat_bot = ChatBot(vector_store, model_path, openai_key=openai_key)
 
 ## Chat interface with streamlit
+if 'chat_bot' not in st.session_state:
+    st.session_state.chat_bot = ChatBot(vector_store, model_path, openai_key=openai_key)
+
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
@@ -69,7 +72,9 @@ if prompt := st.chat_input("Type your question here"):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
 if prompt:
-    response, context = chat_bot.chat(prompt)
+    response, context = st.session_state.chat_bot.chat(prompt)
+    print(f"app.py chat history: {st.session_state.chat_bot.chat_history}")
+    print(f"app context {context}")
 
     # TODO add side window with context
 
